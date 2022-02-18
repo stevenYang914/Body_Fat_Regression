@@ -1,0 +1,343 @@
+---
+title: 'Stat333 project 1'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+BodyFat = read.csv("BodyFat.csv")
+attach(BodyFat)
+dim(BodyFat)
+colnames(BodyFat)
+```
+
+## Step 1: Analyzing Raw Data
+1. We first take a look at the head of the data set(first 6 rows) and the tail of the data set(last 6 rows) to get a general format of the data frame. Each row represents one single person with his ID number and 16 other body measurements. Our response variable is the percent body fat. We exclude the ID number and density in our model to predict body fat since ID number is irrelevant and density is a direct measurement for body fat.
+
+2. An interesting pattern to notice is that weight and height are measured in increment of 0.25 pound and inch, while abdomen, chest, and other measurements are more precisely measured.
+
+3. We then check the data set's summary. We can see some relatively abnormal data. For example, the minimum of body fat is 0 percent, which is impossible in real life. Also, the max percent body fat is 45%, which means that nearly half of the person' body is fat. Looking at the height, there is a person whose height is only 29.5 inches. These data are highly unlikely to happen(while still possible in some cases). We should be aware of these points and perhaps exclude them when cleaning the data if necessary.
+
+```{r}
+head(BodyFat)
+tail(BodyFat)
+summary(BodyFat)
+```
+Then, in order to get a better sense of which body measurement should be closely related to percent body fat, we can do a background research. Here are two images I found when searching for body fat. Our best guess at this point is that the percent body fat could be closely correlated with weight, thigh, abdomen and chest circumferences since as the percent body fat increases, these measurements increase evidently. 
+
+
+![alt text](https://i2.wp.com/www.nutrilove.co.in/wp-content/uploads/2020/05/body-fat-percentage-min-3.png?ssl=1)
+
+![alt text](http://www.gymproject.co.uk/wp-content/uploads/2016/08/bodyfat.jpg)
+
+
+5. Further checking, we extract the correlation table between body fat and all other factors in the data set. We get more confident that the percent body fat is closely related to chest and abdomen circumferences. Also, the correlation between body fat and adiposity is also fairly high. We could focus more on this predictor later in our analysis as well. However, the correlation between weight and body fat, thigh circumference and body fat is not so high comparing to those factors.
+```{r}
+correlation = cor(BodyFat)
+correlation[2, 4:17]
+```
+
+6. We then order the factors in descending order by their correlation with body fat and pick the first four largest of them to focus on. Next, we draw a sample by 5 among the 252 data and only look at these three measurements. Then, we order the sample by percent body fat in ascending order. We can see that generally all these four measurements have a positive relationship with body fat. That is, as these measurements increase, the percent body fat also increases. Thus, we may limit our prediction by focusing on these four measurements: Chest, Abdomen, Adiposity, and hip.
+```{r}
+list = sort(correlation[2, 4:17], decreasing = TRUE)
+list[1:4] # highest three correlation with body fat
+sample = BodyFat[seq(1, 252, 5), c("BODYFAT","CHEST","ABDOMEN","ADIPOSITY","HIP")]
+sample[order(sample$BODYFAT), ]
+```
+
+## Step 2: Visualizing Data
+We want to plot Histograms of each variables in this step. 
+It seems like majority of individuals chest circumference is around 100 cm, of Abdomen circumference is 90 cm, of Adioposity is 23 bmi, and of hip circumference is 100 cm. We can also observe some obvious outliers in the histograms. For example, in the chest histogram, there are outliers around 130 cm and 140 cm. 
+```{r}
+par(mfrow=c(2,2))
+par(mgp=c(1.8,.5,0), mar=c(3,3,1,1))
+hist(BodyFat$CHEST,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Chest",xlab="Chest circumference (cm)")
+hist(BodyFat$ABDOMEN,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Abdomen",xlab="Abdomen circumference (cm)")
+hist(BodyFat$ADIPOSITY,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Adiposity",xlab="Adioposity (bmi)")
+hist(BodyFat$HIP,breaks=30,cex.lab=1.5,cex.main=1.5,main="Histogram of Hip",xlab="Hip circumference (cm)")
+
+```
+
+It seems like majority of individuals bodyfat is around 20%, of height is 70 inches, of age is 40 yrs, and of weight is 175 lbs.
+```{r}
+par(mfrow=c(2,2))
+par(mgp=c(1.8,.5,0), mar=c(3,3,1,1))
+hist(BodyFat$BODYFAT,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Bodyfat",xlab="Bodyfat (%)")
+hist(BodyFat$HEIGHT,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Height",xlab="Height (inches)")
+hist(BodyFat$AGE,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Age",xlab="Age (yrs)")
+hist(BodyFat$WEIGHT,breaks=30,cex.lab=1.5,cex.main=1.5,main="Histogram of Weight",xlab="weight(lbs)")
+
+```
+
+The four histograms all seem to have the pattern of normal distribution. Majority of individuals have neck circumference around 37cm, thigh circumference around 58cm. There exists potential outliers when neck circumference equals to 51.2cm, thigh circumference equals to 87.3 cm, knee circumference equals to 49.1cm, ankle circumference equals to 33.9cm. 
+```{r}
+par(mfrow=c(2,2))
+par(mgp=c(1.8,.5,0), mar=c(3,3,1,1))
+hist(BodyFat$NECK,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Neck circumference",xlab="Neck (cm)")
+hist(BodyFat$THIGH,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Thigh circumference",xlab="Thigh (cm)")
+hist(BodyFat$KNEE,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Knee circumference",xlab="Knee (cm)")
+hist(BodyFat$ANKLE,breaks=30,cex.lab=1.5,cex.main=1.5,main="Histogram of Ankle circumference",xlab="Ankle(cm)")
+
+```
+
+Based on the biceps histogram, the majority of individuals have biceps circumference around 30cm, there exists an outlier when biceps circumference equals to 45cm. Majority of people have forearm circumference falls between 27-30cm, wrist circumference between 17-19cm and density between 0.04-0.08. No obvious outliers are detected. 
+```{r}
+par(mfrow=c(2,2))
+par(mgp=c(1.8,.5,0), mar=c(3,3,1,1))
+hist(BodyFat$BICEPS,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Biceps circumference",xlab="Biceps (cm)")
+hist(BodyFat$FOREARM,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Forearm circumference",xlab="Forearm (cm)")
+hist(BodyFat$WRIST,breaks=30,cex.lab=1.5,cex.main=1.5, main="Histogram of Wrist circumference",xlab="Wrist (cm)")
+hist(BodyFat$DENSITY,breaks=30,cex.lab=1.5,cex.main=1.5,main="Histogram of Density",xlab="Density")
+
+```
+
+Based on the histograms, we want to look at subsets of the data.In this step, we mainly want to detect obvious outliers that are showing in histograms of each variables.Followings are the obvious outlier that can be observe in this dataset. 
+```{r}
+BodyFat[BodyFat$CHEST > 120,]
+```
+
+```{r}
+BodyFat[BodyFat$ABDOMEN > 120,]
+```
+
+```{r}
+BodyFat[BodyFat$ADIPOSITY > 35,]
+```
+
+```{r}
+BodyFat[BodyFat$HIP > 120,]
+```
+
+## Step 3: Statistical Modeling
+Before start building our model, we need to clean the data first by removing unusual data entries. 
+```{r}
+Point1Index = which(BodyFat$BODYFAT == 0) #No.182 participant has 0% bodyfat, removed
+Point2Index = which(BodyFat$ADIPOSITY == max(BodyFat$ADIPOSITY)) #No.39 has 48.9 adiposity, removed
+Point3Index = which(BodyFat$WEIGHT == max(BodyFat$WEIGHT)) #No.39 has weight of 363.15 pounds, removed
+Point4Index = which(BodyFat$ABDOMEN == max(BodyFat$ABDOMEN)) #No.39 has Abdomen of 148.1, removed
+Point5Index = which(BodyFat$HIP == max(BodyFat$HIP)) #No.39 has 147.7 hip circumference, removed
+Point6Index = which(BodyFat$HEIGHT == min(BodyFat$HEIGHT)) #No.42 has height of 29.5 inches, removed
+```
+
+The points need to be removed is No.182, No.39, No.42. We update our data set by removing these three points.
+```{r}
+BodyFat = BodyFat[-c(182, 39, 42), ]
+```
+### SLR Models
+Then we build an SLR model for each of the 14 predictors with Body Fat Percentage.
+By generally comparing the value of $R^2$ firstly, we can see that predictors **Adiposity**, **Abdomen**, and **chest** have the top three highest $R^2$, which are 0.5488, 0.6725, and 0.4803 respectively. The value of $R^2$ for the rest of predictors are fairly small comparing with those three. Therefore, we can limit our focus only on these three predictors to calculate our rule of thumb.
+```{r}
+lm.age = lm(BODYFAT ~ AGE, data = BodyFat)
+summary(lm.age)$r.squared
+
+lm.weight = lm(BODYFAT ~ WEIGHT, data = BodyFat)
+summary(lm.weight)$r.squared
+
+lm.height = lm(BODYFAT ~ HEIGHT, data = BodyFat)
+summary(lm.height)$r.squared
+
+lm.adiposity = lm(BODYFAT ~ ADIPOSITY, data = BodyFat)
+summary(lm.adiposity)$r.squared
+
+lm.neck = lm(BODYFAT ~ NECK, data = BodyFat)
+summary(lm.neck)$r.squared
+
+lm.chest = lm(BODYFAT ~ CHEST, data = BodyFat)
+summary(lm.chest)$r.squared
+
+lm.abdomen = lm(BODYFAT ~ ABDOMEN, data = BodyFat)
+summary(lm.abdomen)$r.squared
+
+lm.hip = lm(BODYFAT ~ HIP, data = BodyFat)
+summary(lm.hip)$r.squared
+
+lm.thigh = lm(BODYFAT ~ THIGH, data = BodyFat)
+summary(lm.thigh)$r.squared
+
+lm.knee = lm(BODYFAT ~ KNEE, data = BodyFat)
+summary(lm.knee)$r.squared
+
+lm.ankle = lm(BODYFAT ~ ANKLE, data = BodyFat)
+summary(lm.ankle)$r.squared
+
+lm.biceps = lm(BODYFAT ~ BICEPS, data = BodyFat)
+summary(lm.biceps)$r.squared
+
+lm.forearm = lm(BODYFAT ~ FOREARM, data = BodyFat)
+summary(lm.forearm)$r.squared
+
+lm.wrist = lm(BODYFAT ~ WRIST, data = BodyFat)
+summary(lm.wrist)$r.squared
+```
+
+For the following, we need to find out which predictor is the best candidate for our rule of thumb. We will check this first by creating a MLR model which has all of the three predictors. We see from the t-statistics and p-value below that **Abdomen** is most statistically significant comparing to the other two.
+
+Then we will build a second MLR model by removing each one of these three predictors. We extract the Adjusted $R^2$ and see that when we remove the **Abdomen** from the MLR model, the Adjusted $R^2$ decreases the most (from 0.6858 to 0.5470).
+
+Based on these two evidences, we can therefore conclude that **Abdomen** is the best simple predictor for our rule of thumb of Body Fat Percentage.
+```{r}
+lm.all = lm(BODYFAT ~ ADIPOSITY + ABDOMEN + CHEST, data = BodyFat)
+summary(lm.all)
+
+lm.1 = lm(BODYFAT ~ ADIPOSITY + ABDOMEN, data = BodyFat) # remove Chest
+summary(lm.1)$adj.r.squared
+
+lm.2 = lm(BODYFAT ~ ADIPOSITY + CHEST, data = BodyFat) # remove Abdomen
+summary(lm.2)$adj.r.squared
+
+lm.3 = lm(BODYFAT ~ ABDOMEN + CHEST, data = BodyFat) # remove Adiposity
+summary(lm.3)$adj.r.squared
+```
+
+
+This the SLR model we finally decide.
+$$
+BodyFatPercentage = 0.61589*ABDOMEN - 37.99141
+$$
+```{r}
+summary(lm.abdomen)
+plot(BodyFat$ABDOMEN, BodyFat$BODYFAT, main = "Scatter Plot between Abdomen and BodyFat", xlab = "Abdomen Circumference",
+     ylab = "BodyFat Percentage", pch = 19)
+abline(lm.abdomen, col = "red", lwd = 3)
+```
+
+Then we perform a t-test to check if SLR model is significant.
+$$
+H_0: \beta_1 = 0 \\
+H_1:\beta_1 ≠ 0 \\
+$$
+The t-statistic is 22.52 and p-value is less than 2e-16. With any significant level, we can reject the null in favor of the alternative hypothesis. In plain English, we conclude that there is a linear relationship between Abdomen circumference and Body Fat Percentage.
+
+We can also get a 95% confidence interval.
+We are 95% confident that the true Intercept for our model is between (-42.996683, -32.9861436) and the true slope coefficient is between (0.562028, 0.6697498).
+```{r}
+confint(lm.abdomen)
+```
+ 
+To use our model, for example, we have a person whose abdomen circumference is about 120 centimeters. We can plug-in 120 into this formula to get his Body Fat Percentage is around 35.91526% 
+
+We can also derive a prediction interval for this person. 
+There is a 95% probability that this man's body fat percentage is between (27.18333, 44.64718) 
+```{r}
+predict(lm.abdomen, newdata = data.frame(ABDOMEN = 120), interval = "predict")
+```
+
+## Step 4: Diagnostics
+After model fitting, we diagnose the SLR assumptions with a residual plot and a QQ plot. 
+
+Residual plot: good for diagnosing (i) linearity vioations, (ii) homoskedasticity violations, and (iii) detecting outliers in Y 
+
+QQ plot: good for diagnosing violations to Normality 
+
+First, we use a residual plot to check linearity and homoskedasticity.
+```{r}
+par(mfrow = c(1,1))
+plot(predict(lm.abdomen),resid(lm.abdomen),pch=19,cex=1.2,cex.lab=1.5,cex.main=1.5,
+    xlab="Predicted Body Fat %", ylab="Standardized Residuals",main="Standardized Residual Plot")
+abline(a=0,b=0,col="black",lwd=3)
+```
+
+Then we use a QQ plot to check the normality.  
+```{r}
+qqnorm(rstandard(lm.abdomen),pch=19,cex=1.2,cex.lab=1.5,cex.main=1.5,
+      main="Normal Q-Q Plot of the Residuals")
+abline(a=0,b=1,col="black",lwd=3)
+```
+
+From the graphs, we can see:
+
+1. Linearity seems reasonable because there are no obvious non-linear trends in the residual plot; the points look randomly scattered around the X axis. 
+2. Homoskedasticity is plausible, there is no obvious pattern in the residual plot. 
+3. Normality also looks reasonble because the points in the QQ plot hug the 45 degree line very closely. But, there may be possibly skinny tail or right skew issue (see -1 to 0 region). 
+
+## Outliers in Y, Leverage and Influential Points
+From our model of body fat based on abdomen, there also does not seem to be any outliers in Y (this is subjective though).
+
+To better discern the outliers, we also check for leverage and influential points.
+
+For leverage points, we’ll use pii measures from the lectures. For influential points, we will use both the Cook’s distance and the pii measures.
+```{r}
+pii = hatvalues(lm.abdomen)
+cooki = cooks.distance(lm.abdomen)
+
+par(mfrow = c(2,1))
+n = dim(BodyFat)[1]
+plot(1:n,pii,type="p",pch=19,cex=1.2,cex.lab=1.5,cex.main=1.5,
+     xlab="Index (Each Observation)",ylab="Pii",main="Leverage Values (Pii)")
+plot(1:n,cooki,type="p",pch=19,cex=1.2,cex.lab=1.5,cex.main=1.5,
+     xlab="Index (Each Observation)",ylab="Cook's Distance",main="Influence Values (Cook's Distance)")
+```
+
+There are two leverage points (the 40th and 213th observation). 
+And both of them seems to be influential points by comparing both the Cook’s distance and the leverage values.
+
+We remove the two influential points are made a new SLR model.
+```{r}
+BodyFat = BodyFat[-c(40, 213), ]
+lm.abdomen = lm(BODYFAT ~ ABDOMEN, data = BodyFat)
+summary(lm.abdomen)
+```
+
+This the SLR model we improved.
+$$
+BodyFatPercentage = 0.61544*ABDOMEN - 37.95511
+$$
+```{r}
+summary(lm.abdomen)
+plot(BodyFat$ABDOMEN, BodyFat$BODYFAT, main = "Scatter Plot between Abdomen and BodyFat", xlab = "Abdomen Circumference",
+     ylab = "BodyFat Percentage", pch = 19)
+abline(lm.abdomen, col = "red", lwd = 3)
+```
+
+Then we perform a t-test to check if SLR model is significant.
+$$
+H_0: \beta_1 = 0 \\
+H_1:\beta_1 ≠ 0 \\
+$$
+The t-statistic is 21.74 and p-value is less than 2e-16. With any significant level, we can reject the null in favor of the alternative hypothesis. In plain English, we conclude that there is a linear relationship between Abdomen circumference and Body Fat Percentage.
+
+We can also get a 95% confidence interval.
+We are 95% confident that the true Intercept for our model is between (-43.1199043, -32.7903198) and the true slope coefficient is between (0.5596846, 0.6711946).
+```{r}
+confint(lm.abdomen)
+```
+ 
+To use our model, for example, we have a person whose abdomen circumference is about 120 centimeters. We can plug-in 120 into this formula to get his Body Fat Percentage is around 35.89769% 
+
+We can also derive a prediction interval for this person. 
+There is a 95% probability that this man's body fat percentage is between (27.21593, 44.57935) 
+```{r}
+predict(lm.abdomen, newdata = data.frame(ABDOMEN = 120), interval = "predict")
+```
+
+## Summary of analysis: 
+
+Body Fat Pct = 0.6*Abdomen-38 
+
+Possible rule of thumb: multiply abdomen circumference by 0.6 and minus 38. 
+The result of our analysis shows that the percentage of body fat has a positive linear relationship with abdomen circumference. Our model provides a simple, convenient way to estimate the body fat based on abdomen circumference. 
+
+Example Usage:   
+A man with 120cm abdomen circumference is expected to have a body fat percentage of 35.915 based on our model. His 95% prediction interval is between 27.216% and 44.579%. 
+ 
+Inference about Relationship: There is clearly a linear relationship between abdomen circumference and body fat % and this relationship is significant at the α=0.05 level with p-value  
+ less than 2e-16. Abdomen circumference explains about % of all the variation in body fat %. 
+ 
+Strengths and Weakness of Model:
+I think the SLR is a reasonable model between body fat % and abdomen circumference, despite some caveats. 
+Linearity: seems reasonable based on the residual plot and scatter plot. 
+Normally distributed errors: seems plausible from the QQ plot diagnostic. However, there may be possibly skinny tail or right skew issues. 
+Our model is straightforward and easy to understand. It can be easily updated with new data. 
+Overall, our model provides a cost-efficient, convenient way to estimate the body fat purely based on abdomen circumference. The linearity, homoscedasticity and normality all seem plausible. However, there may be possibly skinny tail or right skew issues. 
+
+
+Contribution:
+Chunyu Luo: Step 1 reviewed, Step 4 codes and graphs
+Sabrina Liu: Step 2 codes and graphs
+Kechen Lu: Step 2 codes and graphs, Summary of analysis edited
+Steven Yang: Step 1 codes and graphs, Step 3 codes and graphs
+
